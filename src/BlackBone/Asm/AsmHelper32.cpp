@@ -196,8 +196,18 @@ void AsmHelper32::PushArg( const AsmVariant& arg, eArgType regidx /*= AT_stack*/
     {
     case AsmVariant::imm:
     case AsmVariant::structRet:
-        // TODO: resolve 64bit imm values instead of ignoring high bits
-        PushArgp( arg.imm_val, regidx );
+        // Handle 64-bit values correctly in 32-bit mode
+        if (arg.size == sizeof(uint64_t))
+        {
+            // Push high 32 bits first (little-endian stack)
+            PushArgp( static_cast<uint32_t>(arg.imm_val >> 32), regidx );
+            // Push low 32 bits
+            PushArgp( static_cast<uint32_t>(arg.imm_val & 0xFFFFFFFF), regidx );
+        }
+        else
+        {
+            PushArgp( static_cast<uint32_t>(arg.imm_val), regidx );
+        }
         break;
 
     case AsmVariant::dataPtr:

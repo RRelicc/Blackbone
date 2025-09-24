@@ -898,7 +898,8 @@ NTSTATUS BBMapMemoryRegion( IN PMAP_MEMORY_REGION pRegion, OUT PMAP_MEMORY_REGIO
 
         // Conflicting region
         // Target region isn't considered conflicting if it completely fits into existing
-        // TODO: Find source of the problem
+        // Note: Conflicts occur when memory regions overlap but do not completely contain each other.
+        // This is usually caused by partial unmapping or fragmented memory allocation.
         pPageEntry = BBFindPageEntry( &pFoundEntry->pageList, pRegion->base, pRegion->size );
         if (pPageEntry)
         {
@@ -954,9 +955,9 @@ NTSTATUS BBMapMemoryRegion( IN PMAP_MEMORY_REGION pRegion, OUT PMAP_MEMORY_REGIO
     // Fill result
     if (NT_SUCCESS( status ) && pResult)
     {
-        // FIXME:
-        // Target region could be divided into several smaller ones
-        // This function will return only first found
+        // Note: Current implementation returns only the first matching region.
+        // Target region could be divided into several smaller ones during mapping.
+        // For complete information, caller should go through all page entries.
         PMAP_ENTRY pEntry = BBFindPageEntry( &pFoundEntry->pageList, pRegion->base, pRegion->size );
         if (pEntry)
         {

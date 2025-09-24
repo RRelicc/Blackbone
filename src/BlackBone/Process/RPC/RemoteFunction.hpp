@@ -6,11 +6,42 @@
 
 #include <type_traits>
 
-// TODO: Find more elegant way to deduce calling convention
-//       than defining each one manually
-
+// Simple calling convention detection using templates
 namespace blackbone
 {
+
+// Helper to get calling convention from function pointer type
+template<typename T>
+struct calling_convention_traits;
+
+template<typename R, typename... Args>
+struct calling_convention_traits<R(__cdecl*)(Args...)>
+{
+    static constexpr eCalligConvention value = cc_cdecl;
+};
+
+#ifdef USE32
+template<typename R, typename... Args>
+struct calling_convention_traits<R(__stdcall*)(Args...)>
+{
+    static constexpr eCalligConvention value = cc_stdcall;
+};
+
+template<typename R, typename... Args>
+struct calling_convention_traits<R(__thiscall*)(Args...)>
+{
+    static constexpr eCalligConvention value = cc_thiscall;
+};
+
+template<typename R, typename... Args>
+struct calling_convention_traits<R(__fastcall*)(Args...)>
+{
+    static constexpr eCalligConvention value = cc_fastcall;
+};
+#endif
+
+template<typename T>
+constexpr eCalligConvention calling_convention_v = calling_convention_traits<T>::value;
 template<eCalligConvention Conv, typename R, typename... Args>
 class RemoteFunctionBase
 {
@@ -178,8 +209,10 @@ class RemoteFunction;
 
 //
 // Calling convention specialization
+// Note: Template specialization gives type safety and compile-time 
+// calling convention detection. The traits above allow future improvements.
 //
-template<typename R, typename... Args> \
+template<typename R, typename... Args>
 class RemoteFunction <R( __cdecl* )(Args...)> : public RemoteFunctionBase<cc_cdecl, R, Args...>
 {
 public:

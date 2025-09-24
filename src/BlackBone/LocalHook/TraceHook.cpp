@@ -157,8 +157,38 @@ LONG TraceHook::VecHandlerP( PEXCEPTION_POINTERS ExceptionInfo )
     auto exptRecord = ExceptionInfo->ExceptionRecord;
     auto exptCode   = exptRecord->ExceptionCode;
 
-    // TODO: Somehow determine current hook context
-    HookContext* ctx = &_contexts.begin()->second;
+    // Find current hook context based on instruction pointer and active hooks
+    HookContext* ctx = nullptr;
+    
+    // First, try to find context by checking if current IP matches any hook
+    for (auto& contextPair : _contexts)
+    {
+        if (contextPair.second.hooks.count(exptContex->NIP))
+        {
+            ctx = &contextPair.second;
+            break;
+        }
+    }
+    
+    // If no direct match, find the most recent active context
+    if (!ctx && !_contexts.empty())
+    {
+        ctx = &_contexts.begin()->second;
+        
+        // Try to find a context that is currently in an active tracing state
+        for (auto& contextPair : _contexts)
+        {
+            if (contextPair.second.state != TS_Start)
+            {
+                ctx = &contextPair.second;
+                break;
+            }
+        }
+    }
+    
+    // Safety check
+    if (!ctx)
+        return EXCEPTION_CONTINUE_SEARCH;
 
     // Check if exception should be handled
     if (exptCode != EXCEPTION_SINGLE_STEP && exptCode != EXCEPTION_ACCESS_VIOLATION)

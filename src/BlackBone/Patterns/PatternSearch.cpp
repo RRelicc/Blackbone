@@ -55,7 +55,13 @@ bool PatternSearch::SearchWithHandler(
     const uint8_t* cstart = (const uint8_t*)scanStart;
     const uint8_t* cend   = cstart + scanSize;
 
-    // TODO: Would it be beneficial to use logAlignment here as well?
+    // Use alignment optimization if set
+    if (logAlignment > 0)
+    {
+        size_t alignMask = (1 << logAlignment) - 1;
+        uintptr_t alignedStart = (reinterpret_cast<uintptr_t>(cstart) + alignMask) & ~alignMask;
+        cstart = reinterpret_cast<const uint8_t*>(alignedStart);
+    }
 
     auto comparer = [&wildcard]( uint8_t val1, uint8_t val2 )
     {
@@ -70,13 +76,22 @@ bool PatternSearch::SearchWithHandler(
             break;
 
         if (value_offset != 0)
-        	running = !handler( REBASE( res, scanStart, value_offset ) );
+            running = !handler( REBASE( res, scanStart, value_offset ) );
             //out.emplace_back( REBASE( res, scanStart, value_offset ) );
         else
             //out.emplace_back( reinterpret_cast<ptr_t>(res) );
-        	running = !handler( reinterpret_cast<ptr_t>(res) );
+            running = !handler( reinterpret_cast<ptr_t>(res) );
 
-        cstart = res + _pattern.size();
+        // Use alignment for next search step
+        if (logAlignment > 0)
+        {
+            size_t alignStep = 1 << logAlignment;
+            cstart = res + alignStep;
+        }
+        else
+        {
+            cstart = res + _pattern.size();
+        }
     }
 
     return !running;
@@ -84,7 +99,7 @@ bool PatternSearch::SearchWithHandler(
 
 /// <summary>
 /// Full pattern match, no wildcards.
-/// Uses Boyer–Moore–Horspool algorithm.
+/// Uses Boyerï¿½Mooreï¿½Horspool algorithm.
 /// </summary>
 /// <param name="scanStart">Starting address</param>
 /// <param name="scanSize">Size of region to scan</param>
@@ -299,7 +314,7 @@ size_t PatternSearch::Search(
 
 /// <summary>
 /// Full pattern match, no wildcards.
-/// Uses Boyer–Moore–Horspool algorithm.
+/// Uses Boyerï¿½Mooreï¿½Horspool algorithm.
 /// </summary>
 /// <param name="scanStart">Starting address</param>
 /// <param name="scanSize">Size of region to scan</param>

@@ -664,12 +664,36 @@ DWORD RemoteHook::StackBacktrace( ptr_t ip, ptr_t sp, Thread& thd, std::vector<s
             continue;
         }
 
-        uint8_t codeChunk[6] = {0};
-        _memory.Read( original - 6, sizeof(codeChunk), codeChunk );
+        uint8_t codeChunk[15] = {0}; // MAX_INSTRUCTION_LENGTH
+        _memory.Read( original - 15, sizeof(codeChunk), codeChunk );
 
-        // Detect 'call' instruction
-        // TODO: Implement more reliable way to detect 'call'
-        if (codeChunk[0] == 0xFF || codeChunk[1] == 0xE8 || codeChunk[4] == 0xFF)
+        // Find 'call' instruction using better code analysis
+        bool isCallInstruction = false;
+        for (int offset = 0; offset < 10; ++offset) // Check last few instructions
+        {
+            uint8_t* instrPtr = codeChunk + offset;
+            
+            // Direct call (E8 xx xx xx xx)
+            if (instrPtr[0] == 0xE8 && offset + 5 <= 15)
+            {
+                isCallInstruction = true;
+                break;
+            }
+            
+            // Indirect call (FF /2 or FF /3)
+            if (instrPtr[0] == 0xFF && offset + 2 <= 15)
+            {
+                uint8_t modRM = instrPtr[1];
+                uint8_t reg = (modRM >> 3) & 0x7;
+                if (reg == 2 || reg == 3) // CALL r/m32 or CALL m16:32
+                {
+                    isCallInstruction = true;
+                    break;
+                }
+            }
+        }
+
+        if (isCallInstruction)
         {
             results.emplace_back( stackPtr, stack_val );
             i++;

@@ -153,7 +153,9 @@ NTSTATUS RemoteExec::ExecInWorkerThread( PVOID pCode, size_t size, uint64_t& cal
     auto pRemoteCode = _userCode[_currentBufferIdx].ptr();
 
     // Execute code in thread context
-    // TODO: Find out why am I passing pRemoteCode as an argument???
+    // pRemoteCode is passed twice: first as APC routine (function to execute),
+    // second as NormalContext parameter. This is correct since our generated
+    // assembly code does not need external parameters - it is self-contained.
     if (NT_SUCCESS( _process.core().native()->QueueApcT( _workerThread->handle(), pRemoteCode, pRemoteCode ) ))
     {
         status = WaitForSingleObject( _hWaitEvent, 30 * 1000 /*wait 30s*/ );

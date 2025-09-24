@@ -737,10 +737,23 @@ NTSTATUS MMap::RelocateImage( ImageContextPtr pImage )
                     *reinterpret_cast<uint32_t*>(pLocal + fixRVA) = static_cast<uint32_t>(val);
                 }
             }
+            // Support for additional relocation types
+            else if (fixtype == IMAGE_REL_BASED_HIGH)
+            {
+                uintptr_t fixRVA = fixoffset + fixrec->PageRVA;
+                uint16_t* pFix = reinterpret_cast<uint16_t*>(pLocal + fixRVA);
+                *pFix = static_cast<uint16_t>((Delta >> 16) + *pFix);
+            }
+            else if (fixtype == IMAGE_REL_BASED_LOW)
+            {
+                uintptr_t fixRVA = fixoffset + fixrec->PageRVA;
+                uint16_t* pFix = reinterpret_cast<uint16_t*>(pLocal + fixRVA);
+                *pFix = static_cast<uint16_t>((Delta & 0xFFFF) + *pFix);
+            }
             else
             {
-                // TODO: support for all remaining relocations
-                BLACKBONE_TRACE( L"ManualMap: Abnormal relocation type %d. Aborting", fixtype );
+                // Unsupported relocation types (rarely used)
+                BLACKBONE_TRACE( L"ManualMap: Unsupported relocation type %d. Aborting", fixtype );
                 return STATUS_INVALID_IMAGE_FORMAT;
             }
         }

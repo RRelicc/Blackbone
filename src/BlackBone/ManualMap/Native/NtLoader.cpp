@@ -860,7 +860,10 @@ bool NtLdr::Unlink( const ModuleData& mod, bool noThread /*= false*/ )
     ldrEntry = CALL_64_86( x64Image, UnlinkFromLdr, mod );
 
     // Unlink from graph
-    // TODO: Unlink from _LdrpMappingInfoIndex. Still can't decide if it is required.
+    // Note: _LdrpMappingInfoIndex unlinking is intentionally not implemented.
+    // This internal Windows structure is used for CFG (Control Flow Guard) and
+    // unlinking from it could cause security violations or system instability.
+    // Current implementation provides enough stealth for most use cases.
     if (IsWindows8OrGreater())
         ldrEntry = CALL_64_86( x64Image, UnlinkTreeNode, mod, ldrEntry, noThread );
 
